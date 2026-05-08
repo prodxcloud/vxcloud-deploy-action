@@ -1,0 +1,44 @@
+name: "VxCloud Deploy"
+description: "Deploy applications to VxCloud from GitHub Actions"
+author: "ProdXCloud"
+
+branding:
+  icon: "cloud"
+  color: "blue"
+
+inputs:
+  api-key:
+    description: "VxCloud API key"
+    required: true
+
+  project:
+    description: "VxCloud project name or ID"
+    required: true
+
+  environment:
+    description: "Target environment"
+    required: true
+    default: "production"
+
+  config:
+    description: "VxCloud deployment config file"
+    required: false
+    default: "vxcloud.yml"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install VxCloud CLI
+      shell: bash
+      run: |
+        npm install -g @prodxcloud/vxcloud-cli
+
+    - name: Deploy to VxCloud
+      shell: bash
+      env:
+        VXCLOUD_API_KEY: ${{ inputs.api-key }}
+      run: |
+        vxcloud deploy \
+          --project "${{ inputs.project }}" \
+          --environment "${{ inputs.environment }}" \
+          --config "${{ inputs.config }}"
