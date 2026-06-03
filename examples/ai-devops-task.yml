@@ -1,0 +1,32 @@
+# Run a governed vxcloud AI agent as part of CI — e.g. a nightly ops check, or an
+# agent that reasons over a deploy. The agent runs on your tenant node with full
+# audit logging; here it reports back into the workflow.
+name: AI DevOps Task
+
+on:
+  workflow_dispatch:
+    inputs:
+      objective:
+        description: What the agent should do
+        default: Check disk and memory across my services and report anything over 80%
+  schedule:
+    - cron: '0 2 * * *'   # nightly 02:00 UTC
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up vxcli
+        uses: prodxcloud/vxcloud-deploy-action@v1
+        with:
+          username: ${{ secrets.VXCLOUD_USERNAME }}
+          api-key:  ${{ secrets.VXCLOUD_API_KEY }}
+
+      - name: Run governed agent objective
+        run: |
+          vxcli vxcomputer run \
+            --objective "${{ inputs.objective || 'Nightly health sweep across all nodes' }}" \
+            --channel cloudshell
+
+      - name: DevOps agent — draft a release plan from the diff
+        run: vxcli agent devops "Summarize today's changes and propose a safe rollout plan"

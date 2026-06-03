@@ -1,0 +1,39 @@
+# Full IaC flow: provision a fresh VM on AWS, then deploy your app to it.
+# Uses the "set up once, run many" pattern — leave `command` empty so the action
+# just installs + authenticates vxcli, then call it directly in later steps.
+name: Provision & Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: AWS region
+        default: us-east-1
+
+jobs:
+  ship:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up vxcli
+        uses: prodxcloud/vxcloud-deploy-action@v1
+        with:
+          username: ${{ secrets.VXCLOUD_USERNAME }}
+          api-key:  ${{ secrets.VXCLOUD_API_KEY }}
+
+      - name: Provision a VM
+        run: |
+          vxcli vm create --name api --cloud aws --region ${{ inputs.region }} \
+            --instance-type t3.small --key-pair-name AWSPRODKEY1
+
+      - name: Deploy the app (HTTPS)
+        run: |
+          vxcli deploy fastapi --source-dir ./ --app-name api \
+            --entry app.app:app --requirements requirements.txt \
+            --app-port 8000 --http-port 80 \
+            --host ${{ vars.HOST }} --ssh-user ubuntu --key-pair-name AWSPRODKEY1 \
+            --enable-ssl --domain api.example.com --ssl-email ops@example.com
+
+      - name: Verify it's live
+        run: vxcli services list --host ${{ vars.HOST }} --ssh-user ubuntu --key-pair-name AWSPRODKEY1

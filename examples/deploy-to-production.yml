@@ -1,0 +1,26 @@
+# Copy into .github/workflows/ in your application repo.
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build and test
+        run: npm ci && npm test && npm run build
+
+      - name: Deploy to vxcloud
+        uses: prodxcloud/vxcloud-deploy-action@v1
+        with:
+          username: ${{ secrets.VXCLOUD_USERNAME }}
+          api-key:  ${{ secrets.VXCLOUD_API_KEY }}
+          command: >-
+            deploy nextjs --source-dir ./ --app-name myapp
+            --host ${{ vars.HOST }} --ssh-user ubuntu --key-pair-name AWSPRODKEY1
+            --enable-ssl --domain myapp.example.com --ssl-email ops@example.com

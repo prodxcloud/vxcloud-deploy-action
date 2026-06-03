@@ -1,0 +1,27 @@
+# Install a monitoring stack on an existing VM from the vxcli catalog.
+# Runs on a schedule + on demand. Shows install + service lifecycle.
+name: Install Monitoring Stack
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC — re-converge the stack
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up vxcli
+        uses: prodxcloud/vxcloud-deploy-action@v1
+        with:
+          username: ${{ secrets.VXCLOUD_USERNAME }}
+          api-key:  ${{ secrets.VXCLOUD_API_KEY }}
+
+      - name: Install Prometheus
+        run: vxcli install prometheus --host ${{ vars.HOST }} --ssh-user ubuntu --key-pair-name AWSPRODKEY1
+
+      - name: Install Grafana
+        run: vxcli install grafana --host ${{ vars.HOST }} --ssh-user ubuntu --key-pair-name AWSPRODKEY1
+
+      - name: Show running services
+        run: vxcli services list --host ${{ vars.HOST }} --ssh-user ubuntu --key-pair-name AWSPRODKEY1

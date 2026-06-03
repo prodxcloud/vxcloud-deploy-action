@@ -1,0 +1,27 @@
+# Deploy a Docker container to a VM with automatic HTTPS (Let's Encrypt).
+# Copy into .github/workflows/ in your repo.
+name: Deploy Container
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy Grafana with HTTPS
+        uses: prodxcloud/vxcloud-deploy-action@v1
+        with:
+          username: ${{ secrets.VXCLOUD_USERNAME }}
+          api-key:  ${{ secrets.VXCLOUD_API_KEY }}
+          command: >-
+            deploy container
+            --image grafana/grafana:latest --name grafana --ports 3000:3000
+            --env GF_SECURITY_ADMIN_PASSWORD=${{ secrets.GRAFANA_PASSWORD }}
+            --restart unless-stopped
+            --host ${{ vars.HOST }} --ssh-user ubuntu --key-pair-name AWSPRODKEY1
+            --enable-ssl --domain grafana.example.com --ssl-email ops@example.com

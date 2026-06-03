@@ -1,44 +1,77 @@
-name: "VxCloud Deploy"
-description: "Deploy applications to VxCloud from GitHub Actions"
-author: "ProdXCloud"
+name: 'vxcloud Deploy'
+description: 'Install vxcli, authenticate, and deploy / provision / install anything on vxcloud from GitHub Actions.'
+author: 'PRODXCLOUD'
 
 branding:
-  icon: "cloud"
-  color: "blue"
+  icon: 'upload-cloud'
+  color: 'blue'
 
 inputs:
   api-key:
-    description: "VxCloud API key"
+    description: 'vxcloud developer API key (xc_live_* / xc_dev_*). Store it as an encrypted Actions secret.'
     required: true
-
-  project:
-    description: "VxCloud project name or ID"
+  username:
+    description: 'The vxcloud username the API key belongs to.'
     required: true
-
-  environment:
-    description: "Target environment"
-    required: true
-    default: "production"
-
-  config:
-    description: "VxCloud deployment config file"
+  command:
+    description: >-
+      vxcli command to run, WITHOUT the leading "vxcli"
+      (e.g. "deploy fastapi --source-dir ./ --app-name api --host 1.2.3.4
+      --ssh-user ubuntu --key-pair-name KEY --enable-ssl --domain api.example.com").
+      Leave empty to just install + authenticate vxcli so later steps can call it.
     required: false
-    default: "vxcloud.yml"
+    default: ''
+  version:
+    description: 'vxcli version to install (default: latest).'
+    required: false
+    default: 'latest'
+  working-directory:
+    description: 'Directory to run the command in.'
+    required: false
+    default: '.'
+
+outputs:
+  version:
+    description: 'The vxcli version that was installed.'
+    value: ${{ steps.install.outputs.version }}
 
 runs:
-  using: "composite"
+  using: 'composite'
   steps:
-    - name: Install VxCloud CLI
-      shell: bash
-      run: |
-        npm install -g @prodxcloud/vxcloud-cli
-
-    - name: Deploy to VxCloud
+    - name: Install vxcli
+      id: install
       shell: bash
       env:
-        VXCLOUD_API_KEY: ${{ inputs.api-key }}
+        VXCLI_VERSION: ${{ inputs.version == 'latest' && '' || inputs.version }}
       run: |
-        vxcloud deploy \
-          --project "${{ inputs.project }}" \
-          --environment "${{ inputs.environment }}" \
-          --config "${{ inputs.config }}"
+        echo "::group::Installing vxcli (${{ inputs.version }})"
+        curl -fsSL https://vxcloud.io/download/cli/install.sh | sh
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        export PATH="$HOME/.local/bin:$PATH"
+        V="$(vxcli version 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo unknown)"
+        echo "version=$V" >> "$GITHUB_OUTPUT"
+        echo "vxcli $V installed"
+        echo "::endgroup::"
+
+    - name: Authenticate
+      shell: bash
+      env:
+        VX_KEY: ${{ inputs.api-key }}
+        VX_USER: ${{ inputs.username }}
+      run: |
+        export PATH="$HOME/.local/bin:$PATH"
+        echo "::group::Authenticating as $VX_USER"
+        vxcli auth login -u "$VX_USER" -k "$VX_KEY"
+        echo "::endgroup::"
+
+    - name: Run vxcli command
+      if: ${{ inputs.command != '' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        VX_CMD: ${{ inputs.command }}
+      run: |
+        export PATH="$HOME/.local/bin:$PATH"
+        echo "🚀 vxcli $VX_CMD"
+        # shellcheck disable=SC2086  (intentional word-splitting of the command string)
+        vxcli $VX_CMD
