@@ -64,7 +64,13 @@ runs:
         VX_USER: ${{ inputs.username }}
       run: |
         export PATH="$HOME/.local/bin:$PATH"
-        echo "::group::Authenticating as $VX_USER"
+        # Require explicit credentials. Never fall back to the interactive
+        # browser (PKCE) login — that hangs forever on a CI runner.
+        if [ -z "$VX_KEY" ] || [ -z "$VX_USER" ]; then
+          echo "::error::vxcloud auth needs 'api-key' and 'username'. Set the VXCLOUD_API_KEY and VXCLOUD_USERNAME secrets."
+          exit 1
+        fi
+        echo "::group::Authenticating as $VX_USER (API key)"
         vxcli auth login -u "$VX_USER" -k "$VX_KEY"
         echo "::endgroup::"
 
