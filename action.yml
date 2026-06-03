@@ -42,9 +42,13 @@ runs:
       id: install
       shell: bash
       env:
-        VXCLI_VERSION: ${{ inputs.version == 'latest' && '' || inputs.version }}
+        VERSION_INPUT: ${{ inputs.version }}
       run: |
-        echo "::group::Installing vxcli (${{ inputs.version }})"
+        echo "::group::Installing vxcli ($VERSION_INPUT)"
+        # 'latest' (or empty) -> let install.sh resolve the stable pointer; else pin.
+        if [ "$VERSION_INPUT" != "latest" ] && [ -n "$VERSION_INPUT" ]; then
+          export VXCLI_VERSION="$VERSION_INPUT"
+        fi
         curl -fsSL https://vxcloud.io/download/cli/install.sh | sh
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
         export PATH="$HOME/.local/bin:$PATH"
