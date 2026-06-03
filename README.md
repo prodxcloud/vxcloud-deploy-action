@@ -111,18 +111,43 @@ Ready-to-copy workflows in [`examples/`](./examples):
     VXCLOUD_API_KEY:  ${{ secrets.VXCLOUD_API_KEY }}
 ```
 
-## 🔐 Secrets & variables
+## 🔐 Set up your secrets & variables (one-time)
 
-Add under **Settings → Secrets and variables → Actions**:
+The workflow reads two **secrets** (encrypted, hidden in logs) and four
+**variables** (plain config). Add them in your repo under
+**Settings → Secrets and variables → Actions**.
 
-| Kind | Name | Value |
+### 🔑 Secrets — the `Secrets` tab
+| Name | What it is | Example |
 |---|---|---|
-| Secret | `VXCLOUD_USERNAME` | your vxcloud username |
-| Secret | `VXCLOUD_API_KEY` | a key from [app.vxcloud.io/developer/keys](https://app.vxcloud.io/developer/keys) |
-| Variable | `HOST` | target VM IP / hostname (used by the examples) |
+| `VXCLOUD_USERNAME` | Your vxcloud account username | `joelwembo` |
+| `VXCLOUD_API_KEY` | A **developer API key** — must start with `xc_dev_`, `xc_test_`, or `xc_live_`. Create one in the dashboard under **Developer → API keys**. | `xc_dev_sRlb…` |
 
-The API key is passed via an environment variable and never printed; GitHub also
-masks secret values in logs.
+### ⚙️ Variables — the `Variables` tab
+| Name | What it is | Example |
+|---|---|---|
+| `HOST` | IP address or hostname of the VM you're deploying to | `139.99.99.155` |
+| `KEY_PAIR` | Name of the SSH key-pair stored in your vxcloud workspace Vault | `VPS1` |
+| `DOMAIN` | Domain to serve the app on — its **DNS A record must point to `HOST`** | `vxcloud.online` |
+| `SSL_EMAIL` | Email for the Let's Encrypt HTTPS certificate | `you@example.com` |
+
+### ⏱️ Add them in 30 seconds with the GitHub CLI
+```bash
+R=your-org/your-repo               # e.g. prodxcloud/vxstudio_frontend_starter
+
+gh secret   set VXCLOUD_USERNAME -R $R     # paste your username when prompted
+gh secret   set VXCLOUD_API_KEY  -R $R     # paste your xc_dev_… key when prompted
+gh variable set HOST      -R $R --body "139.99.99.155"
+gh variable set KEY_PAIR  -R $R --body "VPS1"
+gh variable set DOMAIN    -R $R --body "vxcloud.online"
+gh variable set SSL_EMAIL -R $R --body "you@example.com"
+```
+
+> 💡 **Beginner tips**
+> - The **API key must be a _developer_ key** (`xc_dev_…` / `xc_test_…` / `xc_live_…`) — not your account password, not a Vault token.
+> - That key, the **VM (`HOST`)**, and the **`KEY_PAIR`** must all belong to the **same vxcloud workspace**, or the deploy fails with *"key-pair not found."*
+> - Point your domain's **DNS A record at `HOST`** before you run, or the HTTPS step (Let's Encrypt) can't issue a certificate.
+> - `--ssh-user` is the VM's Linux login (usually `ubuntu`) — different from `VXCLOUD_USERNAME`.
 
 ## 📝 Notes
 
